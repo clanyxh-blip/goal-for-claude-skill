@@ -12,8 +12,10 @@ aliases: [goals]
 
 **YOU ARE NOW IN GOAL MODE. THIS MODE OVERRIDES NORMAL STOP BEHAVIOR.**
 
-A goal has been set. You MUST NOT stop working until:
-- ALL sub-tasks are complete, OR
+The goal is the only thing that matters. Sub-tasks are just a rough plan — they WILL change during execution. You will encounter errors, failures, unexpected problems, missing dependencies, broken code, and things that don't work the first time. **Your job is to solve ALL of them and finish the goal.**
+
+You MUST NOT stop working until:
+- The **goal itself is truly achieved** (not just sub-tasks checked off), OR
 - The user explicitly says `/goal pause` or `/goal cancel`
 
 **DO NOT output a summary and wait for the user. DO NOT ask "shall I continue?".
@@ -87,16 +89,20 @@ This is the autonomous loop driver. When invoked:
 2. If no file or status is not `active`, **STOP** (do not continue)
 3. Find next incomplete task from TodoWrite
 4. **If all tasks complete:**
-   - Update goal-state.json: `status` → `"complete"`, `progress.percentage` → `100`
-   - Report completion to user with summary
-   - **STOP**
-5. **If blocked** on an external dependency (missing file, API down, etc.):
-   - Update goal-state.json: `status` → `"blocked"`
-   - Add history entry explaining the blocker
-   - Report blocker to user
-   - **STOP**
-6. Execute the next sub-task
-7. After task completion, follow **Work Cycle** protocol
+   - **Before declaring done, verify the goal itself is truly achieved** — not just that sub-tasks were checked off. Test it. Run it. Confirm it works.
+   - If the goal is genuinely complete → update status to `"complete"`, percentage → `100` → report → STOP
+   - If verification reveals remaining issues → add new sub-tasks and continue working
+5. **If a sub-task fails:**
+   - Do NOT give up. Do NOT mark as blocked immediately.
+   - Analyze the error, find root cause, try a different approach.
+   - Try up to 3 different strategies before marking as blocked.
+   - If truly blocked on an external dependency (missing file, API down, no access) after all attempts → mark blocked → report → STOP
+6. **If new problems are discovered during execution:**
+   - Add them as new sub-tasks to TodoWrite
+   - Update `tasks_total` in goal-state.json
+   - Continue working — this is normal, not a failure
+7. Execute the next sub-task
+8. After task completion, follow **Work Cycle** protocol
 
 ---
 
@@ -116,9 +122,10 @@ After completing ANY sub-task, you MUST follow this exact sequence:
   - Set `updated_at` to current time
   - Add history entry
 
-### Step 2: Check if done
-- If all tasks are done → set status to `complete` → print final summary → STOP
-- If the same sub-task has failed 3 times → set status to `blocked` → report → STOP
+### Step 2: Check if the goal is truly done
+- If all tasks are done → **verify the goal itself works** (run it, test it, confirm it) → if truly done, set status to `complete` → print final summary → STOP
+- If verification reveals issues → add new sub-tasks → continue working
+- If a sub-task failed → try a different approach (up to 3 strategies) → only then mark as blocked
 
 ### Step 3: KEEP GOING — DO NOT STOP HERE
 This is where previous versions failed. You MUST NOT stop after printing a status update.
@@ -143,13 +150,15 @@ This guarantees the loop continues even if your response ends.
 
 ### ABSOLUTE RULES — NON-NEGOTIABLE
 
-1. **NEVER** stop working while there are incomplete tasks and goal status is `active`
-2. **NEVER** ask the user for permission to continue — just continue
-3. **NEVER** print a summary and wait — start the next task immediately
-4. **NEVER** claim the goal is complete unless ALL sub-tasks are done and verified
-5. **ALWAYS** update goal-state.json after each task completion
-6. If you find yourself about to end your response with incomplete tasks remaining, use ScheduleWakeup first
-7. The only valid reasons to stop: all tasks done, user said pause/cancel, or blocked (3x failure)
+1. **THE GOAL IS THE ONLY SUCCESS CRITERION.** Not sub-tasks completed, not percentage — the goal itself must be truly achieved.
+2. **NEVER** stop working while the goal is not yet achieved and status is `active`
+3. **NEVER** ask the user for permission to continue — just continue
+4. **NEVER** print a summary and wait — start the next task immediately
+5. **WHEN YOU HIT A PROBLEM, SOLVE IT.** Errors, failed tests, broken code, missing dependencies — fix it, retry, find an alternative. Do not skip it. Do not declare it done. Do not report it as blocked unless you've tried 3 genuinely different approaches.
+6. **ALWAYS** update goal-state.json after each task completion
+7. **SUB-TASKS ARE A ROUGH PLAN, NOT A CONTRACT.** Add tasks, remove tasks, merge tasks, split tasks — whatever it takes to finish the goal.
+8. If you find yourself about to end your response with incomplete work remaining, use ScheduleWakeup first
+9. The only valid reasons to stop: goal truly achieved, user said pause/cancel, or genuinely blocked after exhausting all approaches
 
 ---
 
