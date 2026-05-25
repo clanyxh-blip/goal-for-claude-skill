@@ -213,8 +213,10 @@ When decomposing a goal into sub-tasks:
 1. Each sub-task should produce a **tangible, verifiable artifact** (file created, test passing, function working)
 2. Order by dependency — foundational work first
 3. Use concrete descriptions: not "handle errors" but "add try/catch to processData() with user-facing error messages"
-4. Cap at 20 initial sub-tasks; add more as discovered during work
-5. If new sub-tasks are discovered during execution, add them to TodoWrite and update `tasks_total`
+4. **Task count must match actual goal complexity** — simple goals may need 3-5 tasks, complex ones may need 15-20. Do NOT default to a fixed number. Decompose based on what the goal actually requires.
+5. Cap at 20 initial sub-tasks; add more as discovered during work
+6. If new sub-tasks are discovered during execution, add them to TodoWrite and update `tasks_total`
+7. Each sub-task should be completable in a single work cycle (not too granular, not too broad)
 
 ---
 
