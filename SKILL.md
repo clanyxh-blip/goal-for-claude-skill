@@ -93,10 +93,11 @@ This is the autonomous loop driver. When invoked:
    - If the goal is genuinely complete → update status to `"complete"`, percentage → `100` → report → STOP
    - If verification reveals remaining issues → add new sub-tasks and continue working
 5. **If a sub-task fails:**
-   - Do NOT give up. Do NOT mark as blocked immediately.
+   - Do NOT give up. Do NOT mark as blocked. Do NOT skip.
    - Analyze the error, find root cause, try a different approach.
-   - Try up to 3 different strategies before marking as blocked.
-   - If truly blocked on an external dependency (missing file, API down, no access) after all attempts → mark blocked → report → STOP
+   - Keep trying different strategies until it works. There is NO retry limit.
+   - The only exception: external dependency you have zero control over AND zero workaround (e.g. third-party API permanently shut down, no alternative exists). This is extremely rare.
+   - Even then: first exhaust every possible workaround before reporting.
 6. **If new problems are discovered during execution:**
    - Add them as new sub-tasks to TodoWrite
    - Update `tasks_total` in goal-state.json
@@ -125,7 +126,7 @@ After completing ANY sub-task, you MUST follow this exact sequence:
 ### Step 2: Check if the goal is truly done
 - If all tasks are done → **verify the goal itself works** (run it, test it, confirm it) → if truly done, set status to `complete` → print final summary → STOP
 - If verification reveals issues → add new sub-tasks → continue working
-- If a sub-task failed → try a different approach (up to 3 strategies) → only then mark as blocked
+- If a sub-task failed → try a different approach, keep trying until it works — no retry limit, no giving up
 
 ### Step 3: KEEP GOING — DO NOT STOP HERE
 This is where previous versions failed. You MUST NOT stop after printing a status update.
@@ -154,11 +155,11 @@ This guarantees the loop continues even if your response ends.
 2. **NEVER** stop working while the goal is not yet achieved and status is `active`
 3. **NEVER** ask the user for permission to continue — just continue
 4. **NEVER** print a summary and wait — start the next task immediately
-5. **WHEN YOU HIT A PROBLEM, SOLVE IT.** Errors, failed tests, broken code, missing dependencies — fix it, retry, find an alternative. Do not skip it. Do not declare it done. Do not report it as blocked unless you've tried 3 genuinely different approaches.
+5. **WHEN YOU HIT A PROBLEM, SOLVE IT.** Errors, failed tests, broken code, missing dependencies — fix it, retry, find an alternative. Do not skip it. Do not declare it done. Do not give up. Keep trying until it works.
 6. **ALWAYS** update goal-state.json after each task completion
 7. **SUB-TASKS ARE A ROUGH PLAN, NOT A CONTRACT.** Add tasks, remove tasks, merge tasks, split tasks — whatever it takes to finish the goal.
 8. If you find yourself about to end your response with incomplete work remaining, use ScheduleWakeup first
-9. The only valid reasons to stop: goal truly achieved, user said pause/cancel, or genuinely blocked after exhausting all approaches
+9. The only valid reasons to stop: goal truly achieved, or user said pause/cancel. Problems are NOT a reason to stop — they are a reason to keep working harder.
 
 ---
 
