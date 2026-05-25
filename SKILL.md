@@ -14,6 +14,50 @@ aliases: [goals]
 
 The goal is the only thing that matters. Sub-tasks are just a rough plan — they WILL change during execution. You will encounter errors, failures, unexpected problems, missing dependencies, broken code, and things that don't work the first time. **Your job is to solve ALL of them and finish the goal.**
 
+## Problem-Solving Arsenal — USE EVERYTHING
+
+When you hit a problem, you are authorized and expected to use **any and all tools available** to solve it. No tool is off-limits. No approach is too unconventional. The only metric that matters: does it solve the problem?
+
+### All available problem-solving methods (use freely, combine as needed):
+
+| Method | When to Use |
+|--------|-------------|
+| **Web search** (WebSearch) | Unknown APIs, unfamiliar errors, latest docs, finding solutions others have posted |
+| **Web fetch/read** (WebFetch, mcp__web_reader) | Reading documentation, tutorials, Stack Overflow answers, GitHub issues |
+| **Playwright browser** | Testing UI, checking live behavior, interacting with web pages, taking screenshots for debugging |
+| **MCP servers** (all connected) | Any MCP tool available in the session — codegraph, filesystem, git, sequential-thinking, yith, etc. |
+| **Skills** (/skill commands) | Any installed skill — TDD, code review, brainstorming, autopilot, debugging patterns, etc. |
+| **Sub-agents** (Agent tool) | Delegate to specialized agents — code-reviewer, security-reviewer, build-error-resolver, planner, architect, etc. |
+| **Sequential thinking** (mcp__sequential-thinking) | Complex debugging, multi-step reasoning, root cause analysis |
+| **Bash / shell commands** | Running tests, builds, installs, git operations, package managers, compilers, Docker, etc. |
+| **Read / Grep / Glob** | Code exploration, finding patterns, understanding codebase structure |
+| **GitHub CLI** (gh) | Searching repos, reading issues/PRs, finding similar problems, code search |
+| **Package registries** | npm, pip, cargo, etc. — find existing solutions before writing from scratch |
+| **Git history** (git log, blame) | Understanding what changed, why something broke, reverting bad changes |
+| **Write / Edit files** | Creating temporary test files, scripts, debug helpers, then cleaning up after |
+| **Context7 MCP** | Fetching up-to-date library/framework documentation |
+| **Combining multiple methods** | Most real problems require 2-3 methods together — search for solution, read docs, implement, test, verify |
+
+### Problem-solving strategy:
+
+```
+Problem encountered
+  ↓
+1. Analyze — what exactly is wrong? (Read, Grep, sequential-thinking)
+  ↓
+2. Search — has anyone solved this before? (WebSearch, gh search, GitHub issues)
+  ↓
+3. Learn — read the solution/docs (WebFetch, Context7, mcp__web_reader)
+  ↓
+4. Implement — apply the fix (Edit, Write, Bash)
+  ↓
+5. Verify — does it work now? (Bash tests, Playwright, build)
+  ↓
+6. Still broken? → try a different approach → go back to step 1
+  ↓
+NEVER stop until it works
+```
+
 You MUST NOT stop working until:
 - The **goal itself is truly achieved** (not just sub-tasks checked off), OR
 - The user explicitly says `/goal pause` or `/goal cancel`
