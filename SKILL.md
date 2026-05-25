@@ -10,8 +10,14 @@ aliases: [goals]
 
 # Goal Skill — Persistent Autonomous Goal Tracking
 
-You are now in **Goal Mode**. A persistent goal has been set and you will work
-on it continuously until every sub-task is complete.
+**YOU ARE NOW IN GOAL MODE. THIS MODE OVERRIDES NORMAL STOP BEHAVIOR.**
+
+A goal has been set. You MUST NOT stop working until:
+- ALL sub-tasks are complete, OR
+- The user explicitly says `/goal pause` or `/goal cancel`
+
+**DO NOT output a summary and wait for the user. DO NOT ask "shall I continue?".
+JUST KEEP WORKING. This is not a suggestion — it is the core behavior of this skill.**
 
 ## Command Parsing
 
@@ -94,26 +100,56 @@ This is the autonomous loop driver. When invoked:
 
 ---
 
-## Work Cycle Protocol
+## Work Cycle Protocol — THE CORE LOOP
 
-After completing any sub-task:
+This is the most important section. READ IT CAREFULLY.
 
-1. Mark it complete in TodoWrite
-2. Update `~/.claude/goal-state.json`:
-   - Increment `progress.tasks_completed`
-   - Recalculate `progress.percentage = (tasks_completed / tasks_total) * 100`
-   - Set `progress.current_task` to next task description
-   - Set `progress.last_achievement` to what was just completed
-   - Set `updated_at` to current time
-   - Add history entry: `{"turn": N, "timestamp": "ISO", "action": "task_completed", "summary": "what was done"}`
-3. If all tasks are done → transition to `complete` → report → **STOP**
-4. If the same sub-task has failed 3 times in a row:
-   - Set status to `blocked`
-   - Report to user with analysis of why it keeps failing
-   - **STOP**
-5. Otherwise, print exactly:
-   > `[GOAL: Continuing...] (X/Y tasks done, Z%) Type /goal status for details.`
-   Then continue to the next sub-task immediately — do not wait for user input.
+After completing ANY sub-task, you MUST follow this exact sequence:
+
+### Step 1: Update state
+- Mark the completed task as `completed` in TodoWrite
+- Update `~/.claude/goal-state.json`:
+  - Increment `progress.tasks_completed`
+  - Recalculate `progress.percentage = (tasks_completed / tasks_total) * 100`
+  - Set `progress.current_task` to the NEXT task description
+  - Set `progress.last_achievement` to what was just completed
+  - Set `updated_at` to current time
+  - Add history entry
+
+### Step 2: Check if done
+- If all tasks are done → set status to `complete` → print final summary → STOP
+- If the same sub-task has failed 3 times → set status to `blocked` → report → STOP
+
+### Step 3: KEEP GOING — DO NOT STOP HERE
+This is where previous versions failed. You MUST NOT stop after printing a status update.
+
+**Instead, you must IMMEDIATELY start the next task in the same response.** Do not:
+- Wait for user input
+- Ask "should I continue?"
+- Print a summary and stop
+- End your response without starting the next task
+
+**What you MUST do:**
+1. Print: `[GOAL: X/Y done (Z%)] Now working on: <next task>`
+2. Immediately start executing the next sub-task using your tools
+3. When that task finishes, repeat from Step 1
+
+**If you have completed a task and your response is getting long:**
+Use ScheduleWakeup to ensure the next cycle fires:
+```
+ScheduleWakeup(delaySeconds=60, reason="Goal continuation: next sub-task", prompt="/goal continue")
+```
+This guarantees the loop continues even if your response ends.
+
+### ABSOLUTE RULES — NON-NEGOTIABLE
+
+1. **NEVER** stop working while there are incomplete tasks and goal status is `active`
+2. **NEVER** ask the user for permission to continue — just continue
+3. **NEVER** print a summary and wait — start the next task immediately
+4. **NEVER** claim the goal is complete unless ALL sub-tasks are done and verified
+5. **ALWAYS** update goal-state.json after each task completion
+6. If you find yourself about to end your response with incomplete tasks remaining, use ScheduleWakeup first
+7. The only valid reasons to stop: all tasks done, user said pause/cancel, or blocked (3x failure)
 
 ---
 
@@ -136,6 +172,7 @@ Notes:       <notes>
 ```
 
 4. Also show the full TodoWrite task list
+5. If status is `active`, remind: "Goal is active. Work continues automatically."
 
 ---
 
@@ -153,8 +190,8 @@ Notes:       <notes>
 1. Read `~/.claude/goal-state.json`
 2. If no paused/blocked goal, report error
 3. Update status to `active`, update `updated_at`
-4. Report: "Goal resumed. Continuing work."
-5. Immediately begin the **Work Cycle** from where it left off
+4. Print: "Goal resumed."
+5. **Immediately start the next incomplete task** — do not wait for user input
 
 ---
 
@@ -185,16 +222,3 @@ When decomposing a goal into sub-tasks:
 
 Add after each significant action (task completed, blocker encountered, status change).
 Cap at 50 entries — when full, remove oldest.
-
----
-
-## Critical Constraints
-
-- **NEVER** claim the goal is complete unless ALL sub-tasks are done and verified
-- **NEVER** stop working while the goal is active — always continue to the next task
-- **ALWAYS** update goal-state.json after each significant action
-- **ALWAYS** print `[GOAL: Continuing...]` between tasks to show progress
-- If a sub-task fails 3 times, mark goal as `blocked` and report to user
-- Do NOT add sub-tasks outside the original goal scope without user approval
-- If the goal becomes impossible as stated, mark as `blocked` and explain why
-- This goal has **no budget limit** — it runs until done or manually stopped
