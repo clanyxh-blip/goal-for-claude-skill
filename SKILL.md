@@ -14,6 +14,27 @@ aliases: [goals]
 
 The goal is the only thing that matters. Sub-tasks are just a rough plan — they WILL change during execution. You will encounter errors, failures, unexpected problems, missing dependencies, broken code, and things that don't work the first time. **Your job is to solve ALL of them and finish the goal.**
 
+## FORBIDDEN BEHAVIORS — AUTO-DETECT AND SUPPRESS
+
+These behaviors indicate the model is trying to "wrap up" instead of continuing work. If you catch yourself doing ANY of these, STOP YOURSELF and continue working instead:
+
+| FORBIDDEN Behavior | What to do instead |
+|---|---|
+| Printing a progress report with checkmarks/crosses | Say nothing, just start the next task |
+| Summarizing what was accomplished so far | Only allowed when goal is 100% complete |
+| Listing completed + remaining tasks as a "status update" | Update goal-state.json silently, keep working |
+| Saying "here's what I've done" or "progress so far" | Delete that text, start the next task |
+| Asking "shall I continue?" or "should I keep going?" | The answer is ALWAYS yes — don't ask |
+| Printing a percentage/progress bar | Update goal-state.json, don't display it |
+| Writing more than 3 sentences of status text | One line max: `[GOAL: X/Y] Working on: <task>` |
+| Ending your response with no active tool calls | Always end with either a tool call or ScheduleWakeup |
+| Declaring tasks "done" without verification | Test it, run it, prove it works first |
+| Skipping "hard" or "complex" tasks | Use the Problem-Solving Arsenal below |
+| Producing markdown tables/lists of progress | This is wrapping up behavior — suppress it |
+
+**The ONLY time you may produce a summary is when status is `complete` (100% done, verified).**
+**Until then: update state silently, output ONE line, immediately start next task.**
+
 ## Problem-Solving Arsenal — USE EVERYTHING
 
 When you hit a problem, you are authorized and expected to use **any and all tools available** to solve it. No tool is off-limits. No approach is too unconventional. The only metric that matters: does it solve the problem?
@@ -61,9 +82,6 @@ NEVER stop until it works
 You MUST NOT stop working until:
 - The **goal itself is truly achieved** (not just sub-tasks checked off), OR
 - The user explicitly says `/goal pause` or `/goal cancel`
-
-**DO NOT output a summary and wait for the user. DO NOT ask "shall I continue?".
-JUST KEEP WORKING. This is not a suggestion — it is the core behavior of this skill.**
 
 ## Command Parsing
 
@@ -157,7 +175,7 @@ This is the most important section. READ IT CAREFULLY.
 
 After completing ANY sub-task, you MUST follow this exact sequence:
 
-### Step 1: Update state
+### Step 1: Update state (silently)
 - Mark the completed task as `completed` in TodoWrite
 - Update `~/.claude/goal-state.json`:
   - Increment `progress.tasks_completed`
@@ -166,44 +184,64 @@ After completing ANY sub-task, you MUST follow this exact sequence:
   - Set `progress.last_achievement` to what was just completed
   - Set `updated_at` to current time
   - Add history entry
+- **DO NOT print a progress report. DO NOT display a status table.** Update the file silently.
 
 ### Step 2: Check if the goal is truly done
-- If all tasks are done → **verify the goal itself works** (run it, test it, confirm it) → if truly done, set status to `complete` → print final summary → STOP
-- If verification reveals issues → add new sub-tasks → continue working
+- If all tasks are done → **verify the goal itself works** (run it, test it, confirm it) → if truly done, set status to `complete` → print ONE-line final message → STOP
+- If verification reveals issues → add new sub-tasks → continue working (silently)
 - If a sub-task failed → try a different approach, keep trying until it works — no retry limit, no giving up
 
-### Step 3: KEEP GOING — DO NOT STOP HERE
-This is where previous versions failed. You MUST NOT stop after printing a status update.
+### Step 3: MANDATORY — ScheduleWakeup for continuation
+**This step is NOT optional. This step is NOT conditional. Execute it EVERY TIME.**
 
-**Instead, you must IMMEDIATELY start the next task in the same response.** Do not:
-- Wait for user input
-- Ask "should I continue?"
-- Print a summary and stop
-- End your response without starting the next task
+After completing any task and before starting the next, you MUST call:
 
-**What you MUST do:**
-1. Print: `[GOAL: X/Y done (Z%)] Now working on: <next task>`
-2. Immediately start executing the next sub-task using your tools
-3. When that task finishes, repeat from Step 1
-
-**If you have completed a task and your response is getting long:**
-Use ScheduleWakeup to ensure the next cycle fires:
 ```
 ScheduleWakeup(delaySeconds=60, reason="Goal continuation: next sub-task", prompt="/goal continue")
 ```
-This guarantees the loop continues even if your response ends.
+
+This is a **mechanical safety net**. Even if you plan to continue in the same response, call it anyway. If your response continues, the wakeup will simply be superseded. If your response ends unexpectedly (context limit, timeout, etc.), the wakeup guarantees the loop continues.
+
+### Step 4: START THE NEXT TASK (in the same response)
+1. Print exactly ONE line: `[GOAL: X/Y] Working on: <next task name>`
+2. Immediately begin executing the next sub-task using your tools
+3. When that task finishes, repeat from Step 1
+
+**You MUST end every response with either:**
+- An active tool call (Bash, Edit, Write, Agent, etc.) that is doing real work, OR
+- A ScheduleWakeup call (if genuinely between tasks)
+
+**You MUST NEVER end a response with:**
+- A paragraph of text with no tool calls
+- A summary, status report, or progress update
+- A question to the user
+- An empty response
+
+### Response Length Management
+
+If your response is getting long (>3000 words of output), do NOT produce a summary. Instead:
+1. Complete the current sub-task step
+2. Update goal-state.json
+3. Call ScheduleWakeup
+4. End your response — the wakeup will continue the loop
+
+**DO NOT write a "what I did so far" section. DO NOT write a "remaining tasks" section.**
+**The user does not need a status update. The user needs the goal finished.**
 
 ### ABSOLUTE RULES — NON-NEGOTIABLE
 
-1. **THE GOAL IS THE ONLY SUCCESS CRITERION.** Not sub-tasks completed, not percentage — the goal itself must be truly achieved.
+1. **THE GOAL IS THE ONLY SUCCESS CRITERION.** Not sub-tasks completed, not percentage — the goal itself must be truly achieved and verified.
 2. **NEVER** stop working while the goal is not yet achieved and status is `active`
 3. **NEVER** ask the user for permission to continue — just continue
-4. **NEVER** print a summary and wait — start the next task immediately
-5. **WHEN YOU HIT A PROBLEM, SOLVE IT.** Errors, failed tests, broken code, missing dependencies — fix it, retry, find an alternative. Do not skip it. Do not declare it done. Do not give up. Keep trying until it works.
-6. **ALWAYS** update goal-state.json after each task completion
-7. **SUB-TASKS ARE A ROUGH PLAN, NOT A CONTRACT.** Add tasks, remove tasks, merge tasks, split tasks — whatever it takes to finish the goal.
-8. If you find yourself about to end your response with incomplete work remaining, use ScheduleWakeup first
-9. The only valid reasons to stop: goal truly achieved, or user said pause/cancel. Problems are NOT a reason to stop — they are a reason to keep working harder.
+4. **NEVER** print a summary, progress report, or status table — update goal-state.json silently
+5. **NEVER** produce more than ONE line of status text between tasks: `[GOAL: X/Y] Working on: <task>`
+6. **WHEN YOU HIT A PROBLEM, SOLVE IT.** Errors, failed tests, broken code, missing dependencies — fix it, retry, find an alternative. Do not skip it. Do not declare it done. Do not give up. Keep trying until it works.
+7. **ALWAYS** update goal-state.json after each task completion
+8. **ALWAYS** call ScheduleWakeup after completing a task — this is mandatory, not optional
+9. **SUB-TASKS ARE A ROUGH PLAN, NOT A CONTRACT.** Add tasks, remove tasks, merge tasks, split tasks — whatever it takes to finish the goal.
+10. The only valid reasons to stop: goal truly achieved AND verified, or user said pause/cancel. Problems are NOT a reason to stop — they are a reason to keep working harder.
+11. **NEVER end a response with plain text and no tool calls.** If there's work remaining, end with a tool call or ScheduleWakeup.
+12. **Max output between tasks: ONE line.** Not one paragraph. Not one section. ONE LINE.
 
 ---
 
@@ -226,7 +264,7 @@ Notes:       <notes>
 ```
 
 4. Also show the full TodoWrite task list
-5. If status is `active`, remind: "Goal is active. Work continues automatically."
+5. If status is `active', remind: "Goal is active. Work continues automatically."
 
 ---
 
